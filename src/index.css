@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══ БУНКЕР 204-А — Global Styles ═══ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #1A1A1A;
+  color: #F5F5F5;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #1A1A1A;
+}
+::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 4px;
+}
+
+/* ═══ Grunge Texture Overlay ═══ */
+.grunge-overlay {
+  position: relative;
+}
+.grunge-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.15;
+  mix-blend-mode: overlay;
+}
+
+/* ═══ Card Styles ═══ */
+.card-container {
+  perspective: 1000px;
+}
+
+.card-flip {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.card-flip.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  backface-visibility: hidden;
+  position: absolute;
+  inset: 0;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* ═══ Typewriter Effect ═══ */
+.typewriter {
+  overflow: hidden;
+  border-right: 2px solid #FFD700;
+  white-space: nowrap;
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: #FFD700 }
+}
+
+/* ═══ Biohazard Particles ═══ */
+.particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #2D9B6F;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: particleFloat 8s linear infinite;
+  box-shadow: 0 0 6px #2D9B6F;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% {
+    transform: translateY(-100vh) translateX(100px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* ═══ Pulse Animation for Active Player ═══ */
+.active-player-pulse {
+  animation: activePulse 2s ease-in-out infinite;
+}
+
+@keyframes activePulse {
+  0%, 100% { box-shadow: 0 0 5px #FFD700, 0 0 10px #FFD700; }
+  50% { box-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700, 0 0 60px #FFD70050; }
+}
+
+/* ═══ Eliminated Player ═══ */
+.eliminated {
+  filter: grayscale(1) brightness(0.4);
+  text-decoration: line-through;
+}
+
+/* ═══ Winner Glow ═══ */
+.winner-glow {
+  animation: winnerGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes winnerGlow {
+  0% { box-shadow: 0 0 10px #FFD700; }
+  100% { box-shadow: 0 0 40px #FFD700, 0 0 80px #FFD70060; }
+}
+
+/* ═══ Progress Bar ═══ */
+.vote-bar {
+  transition: width 0.5s ease-out, background-color 0.5s ease;
+}
+
+/* ═══ Shake Animation ═══ */
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* ═══ Biohazard Icon ═══ */
+.biohazard-bg {
+  background: radial-gradient(ellipse at center, #2D9B6F10 0%, transparent 70%);
+}
+
+/* ═══ Card border colors by type ═══ */
+.card-border-profession { border-color: #FFFFFF; }
+.card-border-biology { border-color: #4A90D9; }
+.card-border-health { border-color: #E63946; }
+.card-border-hobby { border-color: #2D9B6F; }
+.card-border-fact { border-color: #87CEEB; }
+.card-border-baggage { border-color: #FFD700; }
+
+/* ═══ Mobile Safe Area ═══ */
+.safe-bottom {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* ═══ Touch optimization ═══ */
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input {
+  -webkit-appearance: none;
+  font-size: 16px; /* Prevent iOS zoom on focus */
+}
+
