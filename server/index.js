@@ -190,7 +190,7 @@ io.on('connection', (socket) => {
   });
 
   // ═══ REQUEST CARD REVEAL ═══
-  socket.on('request_card_reveal', ({ roomCode, targetPlayerId }, callback) => {
+  socket.on('request_card_reveal', async ({ roomCode, targetPlayerId }, callback) => {
     const room = gm.getRoom(roomCode);
     if (!room || room.hostId !== socket.id) {
       callback?.({ error: 'Только ведущий' });
@@ -207,11 +207,14 @@ io.on('connection', (socket) => {
     if (targetPlayerId.startsWith('bot_')) {
       bots.botRevealCard(roomCode, targetPlayerId);
     } else {
-      // Notify the real player with vibration
       io.to(targetPlayerId).emit('your_turn', {
         message: 'Ведущий вызывает тебя! Открой одну карту и объяснись',
       });
     }
+
+    // AI комментарий при вызове
+    const calledComment = await gm.ai.getPlayerCalled(result.playerName);
+    sendAIComment(roomCode, calledComment);
 
     broadcastState(roomCode);
     callback?.({ success: true });
@@ -245,19 +248,27 @@ io.on('connection', (socket) => {
     callback?.({ success: true });
   });
 
-  // ═══ CONFIRM PLAYER TURN ═══
-  socket.on('confirm_player_turn', ({ roomCode, playerId }, callback) => {
+  socket.on('confirm_player_turn', async ({ roomCode, playerId }, callback) => {
     const room = gm.getRoom(roomCode);
     if (!room || room.hostId !== socket.id) {
       callback?.({ error: 'Только ведущий' });
       return;
     }
 
-    const result = gm.confirmPlayerTurn(roomCode, playerId || room.activePlayerId);
+    // Получаем имя активного игрока до подтверждения
+    const activeId = playerId || room.activePlayerId;
+    const activePlayer = room.players.find(p => p.id === activeId);
+    const playerName = activePlayer?.name || 'Неизвестный';
+
+    const result = gm.confirmPlayerTurn(roomCode, activeId);
     if (result.error) {
       callback?.({ error: result.error });
       return;
     }
+
+    // AI комментарий при завершении хода
+    const turnComment = await gm.ai.getTurnEndReaction(playerName);
+    sendAIComment(roomCode, turnComment);
 
     broadcastState(roomCode);
     callback?.({ success: true, allRevealed: result.allRevealed });

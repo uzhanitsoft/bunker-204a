@@ -1,7 +1,9 @@
-// Экран катастрофы — посимвольный текст как в терминале
+// Экран катастрофы — эпичный, звуковой, без эмодзи
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { BiohazardIcon, PlayIcon } from './Icons';
+import { sounds } from '../utils/sounds';
 
 interface CatastropheScreenProps {
   isHost: boolean;
@@ -20,40 +22,24 @@ export default function CatastropheScreen({ isHost, onStartGame }: CatastropheSc
       const timer = setTimeout(() => {
         setDisplayedText(CATASTROPHE_TEXT.slice(0, charIndex + 1));
         setCharIndex(charIndex + 1);
-      }, 40); // Speed of typewriter
+      }, 40);
       return () => clearTimeout(timer);
     } else {
-      // Text fully displayed - show button after 5 seconds
-      const timer = setTimeout(() => setShowButton(true), 5000);
+      const timer = setTimeout(() => setShowButton(true), 3000);
       return () => clearTimeout(timer);
     }
   }, [charIndex]);
 
-  // Try to play alarm sound
+  // Сирена при загрузке
   useEffect(() => {
-    // Create a simple alarm beep using Web Audio API
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = 440;
-      gain.gain.value = 0.1;
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
-      osc.stop(ctx.currentTime + 2);
-    } catch (e) {
-      // Audio not allowed - ignore
-    }
+    sounds.catastropheAlarm();
   }, []);
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 relative overflow-hidden bg-black">
-      {/* Biohazard particles */}
+    <div className="h-full flex flex-col items-center justify-center p-5 relative overflow-hidden bg-black">
+      {/* Частицы */}
       <div className="absolute inset-0 overflow-hidden">
-        {Array.from({ length: 30 }).map((_, i) => (
+        {Array.from({ length: 25 }).map((_, i) => (
           <div
             key={i}
             className="particle"
@@ -70,7 +56,7 @@ export default function CatastropheScreen({ isHost, onStartGame }: CatastropheSc
         ))}
       </div>
 
-      {/* Scanline effect */}
+      {/* Сканлайны */}
       <div
         className="absolute inset-0 pointer-events-none z-10"
         style={{
@@ -78,38 +64,38 @@ export default function CatastropheScreen({ isHost, onStartGame }: CatastropheSc
         }}
       />
 
-      {/* Biohazard symbol */}
+      {/* Символ биоугрозы */}
       <motion.div
         initial={{ opacity: 0, scale: 0.5, rotate: -180 }}
-        animate={{ opacity: 0.1, scale: 1, rotate: 0 }}
+        animate={{ opacity: 0.08, scale: 1, rotate: 0 }}
         transition={{ duration: 2, ease: 'easeOut' }}
-        className="absolute text-[200px] text-bunker-red select-none"
+        className="absolute"
       >
-        ☣️
+        <BiohazardIcon size={250} color="#E63946" />
       </motion.div>
 
-      {/* Terminal text */}
+      {/* Терминал */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="relative z-20 w-full max-w-2xl"
+        className="relative z-20 w-full max-w-md"
       >
-        {/* Terminal header */}
+        {/* Шапка терминала */}
         <div className="bg-bunker-card/80 rounded-t-lg px-4 py-2 flex items-center gap-2 border-b border-bunker-red/30">
-          <div className="w-3 h-3 rounded-full bg-bunker-red" />
-          <div className="w-3 h-3 rounded-full bg-bunker-yellow" />
-          <div className="w-3 h-3 rounded-full bg-bunker-green" />
-          <span className="ml-2 text-bunker-muted font-mono text-xs">ЭКСТРЕННОЕ ОПОВЕЩЕНИЕ — УРОВЕНЬ УГРОЗЫ: КРИТИЧЕСКИЙ</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-bunker-red" />
+          <div className="w-2.5 h-2.5 rounded-full bg-bunker-yellow" />
+          <div className="w-2.5 h-2.5 rounded-full bg-bunker-green" />
+          <span className="ml-2 text-bunker-muted font-mono text-[9px]">ЭКСТРЕННОЕ ОПОВЕЩЕНИЕ — УРОВЕНЬ УГРОЗЫ: КРИТИЧЕСКИЙ</span>
         </div>
 
-        {/* Terminal body */}
-        <div className="bg-black/80 backdrop-blur-sm rounded-b-lg p-6 border border-bunker-red/20 min-h-[300px]">
-          <div className="font-mono text-bunker-red text-xs mb-4 animate-pulse">
-            ▶ СИСТЕМА ОПОВЕЩЕНИЯ АКТИВИРОВАНА
+        {/* Тело терминала */}
+        <div className="bg-black/80 backdrop-blur-sm rounded-b-lg p-5 border border-bunker-red/20 min-h-[250px]">
+          <div className="font-mono text-bunker-red text-[10px] mb-3 animate-pulse">
+            СИСТЕМА ОПОВЕЩЕНИЯ АКТИВИРОВАНА
           </div>
 
-          <pre className="font-mono text-bunker-green text-base md:text-lg leading-relaxed whitespace-pre-wrap">
+          <pre className="font-mono text-bunker-green text-sm leading-relaxed whitespace-pre-wrap">
             {displayedText}
             {charIndex < CATASTROPHE_TEXT.length && (
               <motion.span
@@ -126,25 +112,24 @@ export default function CatastropheScreen({ isHost, onStartGame }: CatastropheSc
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-6 text-bunker-red font-mono text-sm animate-pulse"
+              className="mt-4 text-bunker-red font-mono text-xs animate-pulse"
             >
-              ▶ ПРОТОКОЛ ВЫЖИВАНИЯ АКТИВИРОВАН
+              ПРОТОКОЛ ВЫЖИВАНИЯ АКТИВИРОВАН
             </motion.div>
           )}
         </div>
       </motion.div>
 
-      {/* Start game button (host only) */}
+      {/* Кнопка старта */}
       {isHost && showButton && (
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          onClick={onStartGame}
-          className="relative z-20 mt-8 px-12 py-4 bg-bunker-red text-white rounded-xl font-display text-2xl tracking-wider hover:bg-red-500 active:scale-95 transition-all"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          onClick={() => { sounds.buttonClick(); onStartGame(); }}
+          className="relative z-20 mt-6 w-full max-w-md py-4 bg-bunker-red text-white rounded-xl font-display text-xl tracking-wider active:scale-95 transition-all flex items-center justify-center gap-2"
         >
-          ☣️ НАЧАТЬ ИГРУ
+          <BiohazardIcon size={22} color="#fff" />
+          НАЧАТЬ ИГРУ
         </motion.button>
       )}
 
@@ -153,7 +138,7 @@ export default function CatastropheScreen({ isHost, onStartGame }: CatastropheSc
           initial={{ opacity: 0 }}
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="relative z-20 mt-8 text-bunker-muted font-mono text-sm"
+          className="relative z-20 mt-6 text-bunker-muted font-mono text-xs"
         >
           Ожидание ведущего...
         </motion.p>

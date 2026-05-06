@@ -69,6 +69,10 @@ export function useSocket() {
       // Voting ended - state will be updated
     });
 
+    socket.on('ai_comment', (data) => {
+      store.addAIComment({ text: data.text, timestamp: data.timestamp });
+    });
+
     return () => {
       socket.disconnect();
     };

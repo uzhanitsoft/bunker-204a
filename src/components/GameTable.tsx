@@ -8,6 +8,7 @@ import VotingScreen from './VotingScreen';
 import PauseOverlay from './PauseOverlay';
 import { MicIcon, CheckIcon, SkullIcon, BriefcaseIcon, DnaIcon, HeartPulseIcon, TargetIcon, ZapIcon, BackpackIcon } from './Icons';
 import type { GameState, Card } from '../types';
+import { sounds } from '../utils/sounds';
 
 const CARD_COLORS: Record<string, string> = {
   profession: '#FFFFFF',
@@ -74,29 +75,53 @@ export default function GameTable({
   // Слушаем card_revealed для большой карточки
   useEffect(() => {
     const handler = (e: CustomEvent) => {
-      setAnnouncement(null); // Убираем объявление, показываем карту
+      setAnnouncement(null);
       setRevealedCard(e.detail);
+      if (gameState.isHost) sounds.cardRevealed();
     };
     window.addEventListener('card_revealed_display', handler as EventListener);
     return () => window.removeEventListener('card_revealed_display', handler as EventListener);
-  }, []);
+  }, [gameState.isHost]);
 
   // Показываем объявление когда ведущий вызывает игрока
   useEffect(() => {
     if (gameState.activePlayerId && gameState.activePlayerId !== prevActiveRef.current) {
       const player = gameState.players.find(p => p.id === gameState.activePlayerId);
       if (player) {
-        setRevealedCard(null); // Убираем предыдущую карту
-        setAnnouncement(player.name);
+        setRevealedCard(null);
+        if (gameState.isHost) sounds.playerCalled();
+
+        if (gameState.activePlayerId === myId) {
+          setAnnouncement(player.name);
+          setTimeout(() => setAnnouncement(null), 2000);
+        } else {
+          setAnnouncement(player.name);
+        }
       }
     }
     if (!gameState.activePlayerId && prevActiveRef.current) {
-      // Ведущий подтвердил — закрываем всё
       setAnnouncement(null);
       setRevealedCard(null);
     }
     prevActiveRef.current = gameState.activePlayerId;
-  }, [gameState.activePlayerId, gameState.players]);
+  }, [gameState.activePlayerId, gameState.players, myId, gameState.isHost]);
+
+  // Звук при смене фазы — ТОЛЬКО для ведущего
+  useEffect(() => {
+    if (!gameState.isHost) return;
+    if (gameState.phase === 'voting' || gameState.phase === 'revoting') {
+      sounds.votingStart();
+    }
+    if (gameState.phase === 'elimination') {
+      sounds.elimination();
+    }
+    if (gameState.phase === 'finished') {
+      sounds.victory();
+    }
+    if (gameState.phase === 'catastrophe') {
+      sounds.catastropheAlarm();
+    }
+  }, [gameState.phase, gameState.isHost]);
 
   // Мои скрытые карты
   const myHiddenCards = myPlayer?.cards?.filter(c => !c.revealed) || [];
@@ -265,7 +290,7 @@ export default function GameTable({
         <HostPanel
           gameState={gameState}
           onRequestReveal={onRequestReveal}
-          onConfirmTurn={() => { setRevealedCard(null); setAnnouncement(null); onConfirmTurn(); }}
+          onConfirmTurn={() => { setRevealedCard(null); setAnnouncement(null); sounds.confirmTurn(); onConfirmTurn(); }}
           onStartVoting={onStartVoting}
           onConfirmElimination={onConfirmElimination}
           onStartNextRound={onStartNextRound}
@@ -404,6 +429,7 @@ export default function GameTable({
                   onClick={() => {
                     setRevealedCard(null);
                     setAnnouncement(null);
+                    sounds.confirmTurn();
                     onConfirmTurn();
                   }}
                   className="w-full mt-5 py-4 bg-bunker-yellow text-bunker-bg rounded-xl font-display text-xl tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-transform"
