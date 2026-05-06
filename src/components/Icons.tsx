@@ -8,12 +8,11 @@ interface IconProps {
 
 export function BiohazardIcon({ size = 24, color = 'currentColor', className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="2"/>
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"/>
-      <path d="M12 2a7.5 7.5 0 0 0-3 6.5c0 2.5 1.5 4.5 3 5.5"/>
-      <path d="M12 2a7.5 7.5 0 0 1 3 6.5c0 2.5-1.5 4.5-3 5.5"/>
-      <path d="M2 12c2-2 4.5-3 7-3s5 1 7 3"/>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="11.9" r="2"/>
+      <path d="M6.7 3.4c-.9 2.5 0 5.2 2.2 6.7C6.5 9 3.5 9.6 2 11.8c-1.5 2.3-.8 5.4 1.4 7L8 16c-1.3-.8-1.7-2.6-1-4 .4-.7 1.1-1.2 1.9-1.4"/>
+      <path d="M17.3 3.4c.9 2.5 0 5.2-2.2 6.7 2.4-1.2 5.4-.5 6.9 1.7 1.5 2.3.8 5.4-1.4 7l-4.6-2.8c1.3-.8 1.7-2.6 1-4-.4-.7-1.1-1.2-1.9-1.4"/>
+      <path d="M12 22c-2.7 0-5-2.1-5.2-4.8L9 16.5c.3 1.5 1.5 2.6 3 2.6s2.7-1.1 3-2.6l2.2.7c-.2 2.7-2.5 4.8-5.2 4.8z"/>
     </svg>
   );
 }

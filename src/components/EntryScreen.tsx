@@ -8,19 +8,17 @@ import { BiohazardIcon, CrownIcon, UserIcon, FlaskIcon, CopyIcon, DoorIcon, Play
 interface EntryScreenProps {
   onCreateRoom: () => Promise<any>;
   onJoinRoom: (code: string, name: string) => Promise<any>;
-  onTestHost: () => Promise<any>;
-  onTestPlayer: (name: string) => Promise<any>;
 }
 
-export default function EntryScreen({ onCreateRoom, onJoinRoom, onTestHost, onTestPlayer }: EntryScreenProps) {
-  const [mode, setMode] = useState<'choose' | 'host' | 'player' | 'test'>('choose');
+export default function EntryScreen({ onCreateRoom, onJoinRoom }: EntryScreenProps) {
+  const [mode, setMode] = useState<'choose' | 'host' | 'player'>('choose');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [createdCode, setCreatedCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [testName, setTestName] = useState('Тестер');
+
 
   const { gameState, connected } = useBunkerStore();
 
@@ -45,24 +43,7 @@ export default function EntryScreen({ onCreateRoom, onJoinRoom, onTestHost, onTe
     setLoading(false);
   };
 
-  const handleTestHost = async () => {
-    setLoading(true); setError('');
-    try {
-      const result = await onTestHost();
-      if (result?.error) setError(result.error);
-    } catch (e: any) { setError('Ошибка: ' + e.message); }
-    setLoading(false);
-  };
 
-  const handleTestPlayer = async () => {
-    if (testName.length < 2) { setError('Имя минимум 2 символа'); return; }
-    setLoading(true); setError('');
-    try {
-      const result = await onTestPlayer(testName);
-      if (result?.error) setError(result.error);
-    } catch (e: any) { setError('Ошибка: ' + e.message); }
-    setLoading(false);
-  };
 
   const copyCode = () => {
     navigator.clipboard.writeText(createdCode);
@@ -181,46 +162,11 @@ export default function EntryScreen({ onCreateRoom, onJoinRoom, onTestHost, onTe
                 УЧАСТНИК
               </motion.button>
 
-              <div className="flex items-center gap-3 my-1">
-                <div className="flex-1 h-px bg-white/8" />
-                <span className="text-bunker-muted/50 font-mono text-[8px] tracking-wider">ТЕСТОВЫЙ РЕЖИМ</span>
-                <div className="flex-1 h-px bg-white/8" />
-              </div>
-
-              <motion.button onClick={handleTestHost} disabled={loading || !connected}
-                className="w-full py-3 bg-bunker-green/10 border border-bunker-green/20 text-bunker-green rounded-xl font-display text-lg tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
-                whileTap={{ scale: 0.97 }}>
-                <FlaskIcon size={16} color="#2D9B6F" />
-                ТЕСТ ВЕДУЩЕГО
-              </motion.button>
-
-              <motion.button onClick={() => { setMode('test'); setError(''); }} disabled={!connected}
-                className="w-full py-3 bg-bunker-green/10 border border-bunker-green/20 text-bunker-green rounded-xl font-display text-lg tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
-                whileTap={{ scale: 0.97 }}>
-                <FlaskIcon size={16} color="#2D9B6F" />
-                ТЕСТ УЧАСТНИКА
-              </motion.button>
-
               {error && <p className="text-bunker-red text-xs font-mono text-center">{error}</p>}
             </motion.div>
           )}
 
-          {mode === 'test' && (
-            <motion.div key="test" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-              <div>
-                <label className="text-bunker-muted font-mono text-[9px] block mb-1.5 tracking-wider">ТВОЁ ИМЯ</label>
-                <input type="text" value={testName} onChange={e => setTestName(e.target.value)} placeholder="Введи имя"
-                  className="w-full px-4 py-3 bg-bunker-card border border-white/10 rounded-xl text-bunker-text font-body text-base focus:border-bunker-green focus:outline-none" maxLength={20} autoFocus />
-              </div>
-              {error && <p className="text-bunker-red text-xs font-mono text-center">{error}</p>}
-              <motion.button onClick={handleTestPlayer} disabled={loading || testName.length < 2}
-                className="w-full py-3.5 bg-bunker-green text-white rounded-xl font-display text-xl tracking-wider disabled:opacity-50 flex items-center justify-center gap-2"
-                whileTap={{ scale: 0.97 }}>
-                <FlaskIcon size={18} /> {loading ? 'Запуск...' : 'НАЧАТЬ ТЕСТ'}
-              </motion.button>
-              <button onClick={() => { setMode('choose'); setError(''); }} className="w-full py-2 text-bunker-muted text-xs font-mono">Назад</button>
-            </motion.div>
-          )}
+
 
           {mode === 'player' && !gameState && (
             <motion.div key="player" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-3">

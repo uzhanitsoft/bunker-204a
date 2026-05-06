@@ -25,15 +25,7 @@ export default function App() {
     return await emit('join_room', { roomCode: code, playerName: name });
   }, [emit]);
 
-  // Handle test host mode
-  const handleTestHost = useCallback(async () => {
-    return await emit('create_test_host');
-  }, [emit]);
 
-  // Handle test player mode
-  const handleTestPlayer = useCallback(async (name: string) => {
-    return await emit('create_test_player', { playerName: name });
-  }, [emit]);
 
   // Handle start game (from host)
   const handleStartGame = useCallback(async () => {
@@ -123,8 +115,6 @@ export default function App() {
             key="entry"
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
-            onTestHost={handleTestHost}
-            onTestPlayer={handleTestPlayer}
           />
         )}
 
