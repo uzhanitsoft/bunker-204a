@@ -1,8 +1,7 @@
 // Свайпабельная колода карт игрока
-// Карты можно свайпать (влево/вправо) — карта уходит вниз колоды
-// Нажатие на карту = выбрать для раскрытия
+// Используем card.type как идентификатор (не индексы) — безопасно при изменении массива
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { BriefcaseIcon, DnaIcon, HeartPulseIcon, TargetIcon, ZapIcon, BackpackIcon } from './Icons';
 import type { Card } from '../types';
@@ -40,19 +39,34 @@ interface CardDeckProps {
 }
 
 export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
-  // Порядок карт в колоде (индексы)
-  const [deckOrder, setDeckOrder] = useState<number[]>(() => cards.map((_, i) => i));
+  // Используем type как ключ, не индексы — безопасно при изменении массива
+  const [deckTypes, setDeckTypes] = useState<string[]>([]);
   const [swiping, setSwiping] = useState(false);
   const [confirmCard, setConfirmCard] = useState<Card | null>(null);
 
-  const topIndex = deckOrder[0];
-  const topCard = cards[topIndex];
+  // Синхронизируем порядок колоды при изменении cards
+  useEffect(() => {
+    setDeckTypes(prev => {
+      const currentTypes = cards.map(c => c.type);
+      if (currentTypes.length === 0) return [];
+      // Сохраняем порядок существующих карт, убираем удалённые
+      const kept = prev.filter(t => currentTypes.includes(t));
+      // Добавляем новые (если есть)
+      const newTypes = currentTypes.filter(t => !kept.includes(t));
+      const merged = [...kept, ...newTypes];
+      return merged.length > 0 ? merged : currentTypes;
+    });
+  }, [cards]);
+
+  // Текущая верхняя карта
+  const topType = deckTypes[0];
+  const topCard = cards.find(c => c.type === topType);
+  const topIdx = cards.findIndex(c => c.type === topType);
 
   const handleSwipe = useCallback((_: any, info: PanInfo) => {
-    if (Math.abs(info.offset.x) > 80) {
+    if (Math.abs(info.offset.x) > 80 && deckTypes.length > 1) {
       setSwiping(true);
-      // Перемещаем верхнюю карту в конец колоды
-      setDeckOrder(prev => {
+      setDeckTypes(prev => {
         const newOrder = [...prev];
         const removed = newOrder.shift()!;
         newOrder.push(removed);
@@ -60,7 +74,7 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
       });
       setTimeout(() => setSwiping(false), 100);
     }
-  }, []);
+  }, [deckTypes.length]);
 
   const handleConfirm = () => {
     if (confirmCard) {
@@ -69,7 +83,7 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
     }
   };
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0 || !topCard) return null;
 
   return (
     <>
@@ -88,13 +102,14 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
         {/* Колода */}
         <div className="relative w-72 h-96">
           {/* Фоновые карты (стопка) */}
-          {deckOrder.slice(1, 4).reverse().map((cardIdx, stackPos) => {
-            const card = cards[cardIdx];
+          {deckTypes.slice(1, 4).reverse().map((cardType, stackPos) => {
+            const card = cards.find(c => c.type === cardType);
+            if (!card) return null;
             const offset = (3 - stackPos) * 4;
             const scale = 1 - (3 - stackPos) * 0.03;
             return (
               <div
-                key={`bg-${card.type}`}
+                key={`bg-${cardType}`}
                 className="absolute inset-0 rounded-2xl border"
                 style={{
                   transform: `translateY(${offset}px) scale(${scale})`,
@@ -107,37 +122,38 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
           })}
 
           {/* Верхняя карта — свайпабельная */}
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             {topCard && !swiping && (
               <motion.div
-                key={topCard.type + '-' + deckOrder[0]}
+                key={topCard.type}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.8}
                 onDragEnd={handleSwipe}
-                onClick={() => setConfirmCard(topCard)}
-                initial={{ scale: 0.9, opacity: 0, rotateZ: -5 }}
-                animate={{ scale: 1, opacity: 1, rotateZ: 0 }}
-                exit={{ 
-                  x: 300, 
-                  opacity: 0, 
+                onTap={() => setConfirmCard(topCard)}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{
+                  x: 300,
+                  opacity: 0,
                   rotateZ: 15,
-                  transition: { duration: 0.3 } 
+                  transition: { duration: 0.25 }
                 }}
-                whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
-                className="absolute inset-0 rounded-2xl border-2 flex flex-col items-center justify-center p-6 cursor-grab active:cursor-grabbing select-none"
+                className="absolute inset-0 rounded-2xl border-2 flex flex-col items-center justify-center p-6 select-none touch-pan-y"
                 style={{
                   borderColor: CARD_COLORS[topCard.type] + '60',
                   backgroundColor: '#0d0d0d',
                   boxShadow: `0 20px 60px rgba(0,0,0,0.8), 0 0 30px ${CARD_COLORS[topCard.type]}15`,
                   zIndex: 10,
+                  WebkitUserSelect: 'none',
+                  touchAction: 'pan-y',
                 }}
               >
                 {/* Иконка */}
                 {(() => {
                   const Icon = CARD_ICONS[topCard.type] || BriefcaseIcon;
                   return (
-                    <div 
+                    <div
                       className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
                       style={{ backgroundColor: CARD_COLORS[topCard.type] + '15', border: `2px solid ${CARD_COLORS[topCard.type]}40` }}
                     >
@@ -147,7 +163,7 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
                 })()}
 
                 {/* Тип карты */}
-                <p 
+                <p
                   className="font-mono text-xs tracking-[0.3em] mb-4"
                   style={{ color: CARD_COLORS[topCard.type] + 'CC' }}
                 >
@@ -168,15 +184,15 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
                 </div>
 
                 {/* Свайп индикаторы */}
-                <motion.div 
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/10"
+                <motion.div
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/10 text-2xl"
                   animate={{ x: [-3, 0, -3] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
                   ‹
                 </motion.div>
-                <motion.div 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/10"
+                <motion.div
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/10 text-2xl"
                   animate={{ x: [3, 0, 3] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
@@ -189,13 +205,13 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
 
         {/* Счётчик */}
         <div className="mt-6 flex gap-2">
-          {cards.map((card, idx) => (
+          {deckTypes.map((type) => (
             <div
-              key={card.type}
-              className="w-2 h-2 rounded-full transition-all"
+              key={type}
+              className="w-2.5 h-2.5 rounded-full transition-all"
               style={{
-                backgroundColor: idx === topIndex ? CARD_COLORS[card.type] : '#333',
-                transform: idx === topIndex ? 'scale(1.3)' : 'scale(1)',
+                backgroundColor: type === topType ? (CARD_COLORS[type] || '#FFD700') : '#333',
+                transform: type === topType ? 'scale(1.3)' : 'scale(1)',
               }}
             />
           ))}
@@ -221,25 +237,25 @@ export default function CardDeck({ cards, onRevealCard }: CardDeckProps) {
               style={{ borderColor: CARD_COLORS[confirmCard.type] + '60' }}
             >
               <p className="text-bunker-muted font-mono text-xs mb-2">ОТКРЫТЬ КАРТУ?</p>
-              <p 
+              <p
                 className="font-display text-lg tracking-wider mb-1"
                 style={{ color: CARD_COLORS[confirmCard.type] }}
               >
                 {CARD_LABELS[confirmCard.type]}
               </p>
               <p className="text-white text-lg font-body mb-6">{confirmCard.value}</p>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 py-3 rounded-xl font-display text-lg text-bunker-bg"
+                  className="flex-1 py-3.5 rounded-xl font-display text-lg text-bunker-bg active:scale-95 transition-transform"
                   style={{ backgroundColor: CARD_COLORS[confirmCard.type] }}
                 >
                   ОТКРЫТЬ
                 </button>
                 <button
                   onClick={() => setConfirmCard(null)}
-                  className="px-4 py-3 rounded-xl bg-bunker-card text-bunker-muted font-mono text-sm"
+                  className="px-5 py-3.5 rounded-xl bg-bunker-card text-bunker-muted font-mono text-sm active:scale-95 transition-transform"
                 >
                   Нет
                 </button>
