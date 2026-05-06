@@ -23,6 +23,12 @@ export default function VotingScreen({ gameState, myId, onVote }: VotingScreenPr
     : activePlayers;
   const canVote = !hasVoted && !gameState.votes?.hasVoted;
 
+  // Сброс при переголосовании — чтобы можно было голосовать снова
+  useEffect(() => {
+    setHasVoted(false);
+    setSelectedId(null);
+  }, [gameState.phase]);
+
   useEffect(() => {
     if (!gameState.votingEndTime) return;
     const interval = setInterval(() => {
