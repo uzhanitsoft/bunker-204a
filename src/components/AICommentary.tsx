@@ -1,76 +1,102 @@
-// ИИ-ведущий — всплывающие комментарии тостом, не блокируют игру
+// ИИ-ведущий — берёт комментарии из gameState
+// Отслеживает aiCommentCount (реальный счётчик) вместо длины массива
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBunkerStore } from '../stores/gameStore';
 
-interface Toast {
-  id: number;
-  text: string;
-}
-
 export default function AICommentary() {
-  const { localAIComments } = useBunkerStore();
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const gameState = useBunkerStore(s => s.gameState);
+  const [displayKey, setDisplayKey] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
+  const [fullText, setFullText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const prevCountRef = useRef(0);
-  const idRef = useRef(0);
+  const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Когда приходит новый комментарий — показываем тост
+  const aiComments = gameState?.aiComments || [];
+  const aiCommentCount = gameState?.aiCommentCount || 0;
+
   useEffect(() => {
-    if (localAIComments.length > prevCountRef.current) {
-      const newComments = localAIComments.slice(prevCountRef.current);
-      newComments.forEach(comment => {
-        const id = ++idRef.current;
-        setToasts(prev => [...prev.slice(-2), { id, text: comment.text }]); // Макс 3 тоста
-        
-        // Автоудаление через 6 секунд
-        setTimeout(() => {
-          setToasts(prev => prev.filter(t => t.id !== id));
-        }, 6000);
-      });
+    // Используем aiCommentCount — реальный счётчик, который ВСЕГДА растёт
+    if (aiCommentCount > prevCountRef.current && aiComments.length > 0) {
+      const latest = aiComments[aiComments.length - 1];
+
+      if (typingRef.current) {
+        clearInterval(typingRef.current);
+        typingRef.current = null;
+      }
+
+      const text = latest.text;
+      setFullText(text);
+      setDisplayedText('');
+      setDisplayKey(prev => prev + 1);
+      setIsTyping(true);
+
+      let i = 0;
+      typingRef.current = setInterval(() => {
+        i++;
+        if (i <= text.length) {
+          setDisplayedText(text.slice(0, i));
+        } else {
+          setIsTyping(false);
+          if (typingRef.current) {
+            clearInterval(typingRef.current);
+            typingRef.current = null;
+          }
+        }
+      }, 25);
     }
-    prevCountRef.current = localAIComments.length;
-  }, [localAIComments]);
+    prevCountRef.current = aiCommentCount;
+  }, [aiCommentCount, aiComments]);
+
+  useEffect(() => {
+    return () => {
+      if (typingRef.current) clearInterval(typingRef.current);
+    };
+  }, []);
+
+  if (!fullText) return null;
 
   return (
-    <div className="fixed top-14 left-2 right-2 z-30 pointer-events-none flex flex-col gap-1.5">
-      <AnimatePresence>
-        {toasts.map(toast => (
+    <div className="fixed bottom-16 left-0 right-0 z-[60] pointer-events-none">
+      <div className="pointer-events-auto">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            key={displayKey}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="pointer-events-auto"
+            className="mx-2 mb-2 bg-black/85 backdrop-blur-md border border-bunker-yellow/20 rounded-2xl px-4 py-3"
+            style={{
+              boxShadow: '0 -4px 30px rgba(0,0,0,0.5), 0 0 15px rgba(255,215,0,0.08)',
+            }}
           >
-            <div className="bg-bunker-card/90 backdrop-blur-md border border-bunker-yellow/15 rounded-xl px-3 py-2 flex items-start gap-2.5 shadow-lg">
-              {/* ИИ аватар */}
-              <div className="w-7 h-7 rounded-full bg-bunker-yellow/10 border border-bunker-yellow/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-bunker-yellow/15 border border-bunker-yellow/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 2h6"/><path d="M10 2v6.5L4 20a1 1 0 0 0 .87 1.5h14.26A1 1 0 0 0 20 20l-6-11.5V2"/>
                 </svg>
               </div>
-              
-              {/* Текст */}
               <div className="flex-1 min-w-0">
-                <p className="text-bunker-yellow/50 font-mono text-[7px] tracking-[0.2em] mb-0.5">ИИ-ВЕДУЩИЙ</p>
-                <p className="text-bunker-text text-xs font-body leading-relaxed">{toast.text}</p>
+                <p className="text-bunker-yellow/60 font-mono text-[8px] tracking-[0.25em] mb-1">ИИ-ВЕДУЩИЙ</p>
+                <p className="text-white text-sm font-body leading-relaxed">
+                  {displayedText}
+                  {isTyping && (
+                    <motion.span
+                      animate={{ opacity: [1, 0] }}
+                      transition={{ duration: 0.4, repeat: Infinity }}
+                      className="text-bunker-yellow ml-0.5"
+                    >
+                      |
+                    </motion.span>
+                  )}
+                </p>
               </div>
-
-              {/* Закрыть */}
-              <button
-                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                className="text-bunker-muted/40 hover:text-bunker-muted flex-shrink-0 mt-0.5"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
             </div>
           </motion.div>
-        ))}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

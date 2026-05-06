@@ -42,6 +42,7 @@ export interface GameState {
   votingEndTime: number | null;
   roundChecklist: Record<string, boolean>;
   aiComments: AIComment[];
+  aiCommentCount: number;
   players: Player[];
   votes?: VoteData;
 }

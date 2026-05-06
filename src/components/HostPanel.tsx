@@ -144,15 +144,14 @@ export default function HostPanel({
         {showPlayerList && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center"
+            className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 pb-24"
             onClick={() => setShowPlayerList(false)}
           >
             <motion.div
-              initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }}
-              className="bg-bunker-bg border-t-2 border-bunker-yellow/30 rounded-t-2xl p-4 w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-bunker-bg border-2 border-bunker-yellow/30 rounded-2xl p-4 w-full max-w-md"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
               <h3 className="font-display text-xl text-bunker-yellow mb-3 text-center tracking-wider">ВЫБЕРИТЕ ИГРОКА</h3>
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
                 {activePlayers.filter(p => !gameState.roundChecklist[p.id]).map(player => (

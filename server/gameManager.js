@@ -422,7 +422,8 @@ export class GameManager {
       activePlayerId: room.activePlayerId,
       votingEndTime: room.votingEndTime,
       roundChecklist: room.roundChecklist,
-      aiComments: room.aiComments.slice(-20), // Last 20 comments
+      aiComments: room.aiComments.slice(-20),
+      aiCommentCount: room.aiComments.length, // Реальное кол-во — для детекции новых
       players: room.players.map(p => ({
         id: p.id,
         name: p.name,

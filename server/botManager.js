@@ -5,6 +5,7 @@ const BOT_NAMES = [
   'Бот-Иван', 'Бот-Маша', 'Бот-Коля', 'Бот-Аня',
   'Бот-Саша', 'Бот-Дима', 'Бот-Лена', 'Бот-Петя',
   'Бот-Оля', 'Бот-Миша', 'Бот-Катя', 'Бот-Артём',
+  'Бот-Ника', 'Бот-Руслан',
 ];
 
 export class BotManager {
@@ -61,22 +62,23 @@ export class BotManager {
     setTimeout(async () => {
       const result = this.gm.revealCard(roomCode, botId, card.type);
       if (result.success) {
-        // AI comment
+        // AI comment — добавляем в state
         const reaction = await this.gm.ai.getCardReaction(
           result.playerName, result.card.label, result.card.value, result.profession
         );
         this.gm.addAIComment(roomCode, reaction);
-        this.io.to(roomCode).emit('ai_comment', { text: reaction, timestamp: Date.now() });
+
+        // card_revealed — отдельный event для оверлея с картой
         this.io.to(roomCode).emit('card_revealed', {
           playerId: botId,
           playerName: result.playerName,
           card: result.card,
         });
 
-        // НЕ подтверждаем автоматически — ведущий сам нажмёт СЛЕДУЮЩИЙ
+        // broadcastState доставит aiComments через game_state_update
         this.broadcastState(roomCode);
       }
-    }, 1500 + Math.random() * 1000); // 1.5-2.5 sec delay
+    }, 3000 + Math.random() * 2000);
   }
 
   // Bots auto-vote (protecting a specific player if needed)
@@ -101,7 +103,7 @@ export class BotManager {
         const target = targets[Math.floor(Math.random() * targets.length)];
         this.gm.castVote(roomCode, botId, target.id);
         this.broadcastState(roomCode);
-      }, 2000 + i * 800 + Math.random() * 1000);
+      }, 3000 + i * 1200 + Math.random() * 1500); // Медленнее голосование
     });
   }
 
@@ -131,7 +133,7 @@ export class BotManager {
 
       // Request each player to reveal a card
       activePlayers.forEach((player, index) => {
-        delay += 2500;
+        delay += 5000; // 5 сек между игроками
         
         const t = setTimeout(() => {
           const currentRoom = this.gm.getRoom(roomCode);
@@ -154,21 +156,21 @@ export class BotManager {
                 if (p) {
                   const hidden = p.cards.filter(c => !c.revealed);
                   if (hidden.length > 0 && !r.roundChecklist[player.id]) {
-                    // Don't auto-reveal for real player, just wait longer
+                    // Don't auto-reveal for real player, wait for them
                   }
                 }
               }
-            }, 8000);
+            }, 15000); // 15 сек на реального игрока
           }
         }, delay);
         timers.push(t);
 
         // Confirm turn after reveal
-        delay += 3000;
+        delay += 5000; // 5 сек на осмысление
       });
 
       // Start voting after all reveals
-      delay += 2000;
+      delay += 5000;
       const voteTimer = setTimeout(async () => {
         const currentRoom = this.gm.getRoom(roomCode);
         if (!currentRoom || currentRoom.phase !== 'playing') return;
@@ -248,18 +250,18 @@ export class BotManager {
                 this.broadcastState(roomCode);
                 
                 // Run next round
-                setTimeout(() => runRound(), 2000);
-              }, 3000);
+                setTimeout(() => runRound(), 5000); // 5 сек перед новым раундом
+              }, 5000); // 5 сек после исключения
             }
           }
-        }, 8000); // Wait for voting
+        }, 15000); // 15 сек на голосование
 
       }, delay);
       timers.push(voteTimer);
     };
 
     // Start first round
-    setTimeout(() => runRound(), 3000);
+    setTimeout(() => runRound(), 5000); // 5 сек перед стартом
   }
 
   broadcastState(roomCode) {

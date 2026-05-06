@@ -39,23 +39,31 @@ function broadcastState(roomCode) {
   const room = gm.getRoom(roomCode);
   if (!room) return;
 
+  // Track sent IDs to avoid duplicates
+  const sentIds = new Set();
+
   // Send personalized state to each player
   room.players.forEach(player => {
+    if (sentIds.has(player.id)) return;
+    sentIds.add(player.id);
     const state = gm.getPlayerState(roomCode, player.id);
     io.to(player.id).emit('game_state_update', state);
   });
 
-  // Also send to host
-  const hostState = gm.getPlayerState(roomCode, room.hostId);
-  io.to(room.hostId).emit('game_state_update', hostState);
+  // Also send to host (if not already sent as player)
+  if (!sentIds.has(room.hostId)) {
+    const hostState = gm.getPlayerState(roomCode, room.hostId);
+    io.to(room.hostId).emit('game_state_update', hostState);
+  }
 }
 
 // Helper: send AI comment to all in room
-async function sendAIComment(roomCode, comment) {
+function sendAIComment(roomCode, comment) {
   const room = gm.getRoom(roomCode);
   if (!room) return;
   gm.addAIComment(roomCode, comment);
-  io.to(roomCode).emit('ai_comment', { text: comment, timestamp: Date.now() });
+  // Обновляем game state — клиент берёт aiComments оттуда
+  broadcastState(roomCode);
 }
 
 io.on('connection', (socket) => {
@@ -76,8 +84,8 @@ io.on('connection', (socket) => {
     socket.join(room.code);
     console.log(`🧪 TEST HOST room: ${room.code}`);
 
-    // Add 4 bot players
-    const botIds = bots.addBots(room.code, 4);
+    // Add 13 bot players
+    const botIds = bots.addBots(room.code, 13);
     room._testMode = 'host';
     room._botIds = botIds;
 
@@ -106,8 +114,8 @@ io.on('connection', (socket) => {
     // Add real player
     gm.joinRoom(room.code, socket.id, playerName || 'Игрок');
 
-    // Add 3 more bot players (4 bots total + 1 real = 5 players)
-    const botIds = bots.addBots(room.code, 3);
+    // Add 12 more bot players (12 bots + 1 real = 13 players)
+    const botIds = bots.addBots(room.code, 12);
     room._testMode = 'player';
     room._botIds = [botHostId, ...botIds];
     room._realPlayerId = socket.id;
@@ -212,12 +220,16 @@ io.on('connection', (socket) => {
       });
     }
 
-    // AI комментарий при вызове
-    const calledComment = await gm.ai.getPlayerCalled(result.playerName);
-    sendAIComment(roomCode, calledComment);
-
     broadcastState(roomCode);
     callback?.({ success: true });
+
+    // AI комментарий при вызове — НЕ блокирует основной поток
+    try {
+      const calledComment = await gm.ai.getPlayerCalled(result.playerName);
+      sendAIComment(roomCode, calledComment);
+    } catch (e) {
+      console.error('AI comment error:', e.message);
+    }
   });
 
   // ═══ REVEAL CARD ═══
@@ -266,12 +278,16 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // AI комментарий при завершении хода
-    const turnComment = await gm.ai.getTurnEndReaction(playerName);
-    sendAIComment(roomCode, turnComment);
-
     broadcastState(roomCode);
     callback?.({ success: true, allRevealed: result.allRevealed });
+
+    // AI комментарий при завершении хода — НЕ блокирует
+    try {
+      const turnComment = await gm.ai.getTurnEndReaction(playerName);
+      sendAIComment(roomCode, turnComment);
+    } catch (e) {
+      console.error('AI comment error:', e.message);
+    }
   });
 
   // ═══ START VOTING ═══

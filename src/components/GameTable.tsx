@@ -6,6 +6,7 @@ import AICommentary from './AICommentary';
 import HostPanel from './HostPanel';
 import VotingScreen from './VotingScreen';
 import PauseOverlay from './PauseOverlay';
+import CardDeck from './CardDeck';
 import { MicIcon, CheckIcon, SkullIcon, BriefcaseIcon, DnaIcon, HeartPulseIcon, TargetIcon, ZapIcon, BackpackIcon } from './Icons';
 import type { GameState, Card } from '../types';
 import { sounds } from '../utils/sounds';
@@ -71,6 +72,8 @@ export default function GameTable({
   // Объявление "Ведущий вызывает..."
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const prevActiveRef = useRef<string | null>(null);
+  // Модалка "Мои карты"
+  const [showMyCards, setShowMyCards] = useState(false);
 
   // Слушаем card_revealed для большой карточки
   useEffect(() => {
@@ -92,8 +95,7 @@ export default function GameTable({
         if (gameState.isHost) sounds.playerCalled();
 
         if (gameState.activePlayerId === myId) {
-          setAnnouncement(player.name);
-          setTimeout(() => setAnnouncement(null), 2000);
+          // Не показываем объявление для себя — сразу колода
         } else {
           setAnnouncement(player.name);
         }
@@ -139,9 +141,11 @@ export default function GameTable({
             <p className="text-bunker-muted font-mono text-[9px]">{activePlayers.length} игроков</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-bunker-muted font-mono text-[10px]">Комната</p>
-          <p className="text-bunker-yellow font-display text-lg tracking-wider">{gameState.code}</p>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-bunker-muted font-mono text-[10px]">Комната</p>
+            <p className="text-bunker-yellow font-display text-lg tracking-wider">{gameState.code}</p>
+          </div>
         </div>
       </div>
 
@@ -157,7 +161,7 @@ export default function GameTable({
               <motion.div
                 key={player.id}
                 layout
-                className={`rounded-xl p-3 border transition-all ${
+                className={`rounded-xl p-4 border transition-all ${
                   isActive
                     ? 'border-bunker-yellow bg-bunker-yellow/5 shadow-[0_0_20px_rgba(255,215,0,0.15)]'
                     : hasRevealed
@@ -213,12 +217,12 @@ export default function GameTable({
                     {player.revealedCards.map(card => {
                       const Icon = CARD_ICONS[card.type] || BriefcaseIcon;
                       return (
-                        <div key={card.type} className="flex items-center gap-2 bg-bunker-bg/40 rounded-lg px-2.5 py-1.5">
-                          <Icon size={13} color={CARD_COLORS[card.type]} />
-                          <span className="text-[9px] font-mono uppercase flex-shrink-0 w-14" style={{ color: CARD_COLORS[card.type] + 'AA' }}>
+                        <div key={card.type} className="flex items-center gap-2.5 bg-bunker-bg/40 rounded-lg px-3 py-2">
+                          <Icon size={16} color={CARD_COLORS[card.type]} />
+                          <span className="text-[10px] font-mono uppercase flex-shrink-0 w-16" style={{ color: CARD_COLORS[card.type] + 'AA' }}>
                             {CARD_LABELS[card.type]}
                           </span>
-                          <span className="text-sm font-body text-bunker-text truncate">{card.value}</span>
+                          <span className="text-base font-body text-bunker-text truncate">{card.value}</span>
                         </div>
                       );
                     })}
@@ -243,45 +247,12 @@ export default function GameTable({
         </div>
       </div>
 
-      {/* ═══ ИИ ЛЕНТА ═══ */}
-      <AICommentary />
+      {/* AICommentary рендерится в конце — поверх всего */}
 
-      {/* ═══ ВЫБОР КАРТЫ — мой ход ═══ */}
+      {/* ═══ КОЛОДА КАРТ — мой ход ═══ */}
       <AnimatePresence>
         {isMyTurn && myHiddenCards.length > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="flex-shrink-0 bg-bunker-yellow/10 border-t-2 border-bunker-yellow/40 px-3 py-3"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <MicIcon size={16} color="#FFD700" />
-              <span className="text-bunker-yellow font-display text-sm tracking-wider">ВАШ ХОД — ВЫБЕРИТЕ КАРТУ</span>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {myHiddenCards.map(card => {
-                const Icon = CARD_ICONS[card.type] || BriefcaseIcon;
-                return (
-                  <motion.button
-                    key={card.type}
-                    onClick={() => onRevealCard(card.type)}
-                    className="flex-shrink-0 w-[72px] py-3 rounded-xl border-2 flex flex-col items-center gap-1.5"
-                    style={{
-                      borderColor: CARD_COLORS[card.type] + '80',
-                      backgroundColor: CARD_COLORS[card.type] + '15',
-                    }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <Icon size={22} color={CARD_COLORS[card.type]} />
-                    <span className="text-[8px] font-mono tracking-wider leading-tight text-center" style={{ color: CARD_COLORS[card.type] }}>
-                      {CARD_LABELS[card.type]}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
+          <CardDeck cards={myHiddenCards} onRevealCard={onRevealCard} />
         )}
       </AnimatePresence>
 
@@ -463,6 +434,98 @@ export default function GameTable({
       {/* Pause overlay */}
       <AnimatePresence>
         {gameState.isPaused && <PauseOverlay isHost={gameState.isHost} onResume={onTogglePause} />}
+      </AnimatePresence>
+      {/* ═══ ПЛАВАЮЩАЯ КНОПКА "МОИ КАРТЫ" ═══ */}
+      {!gameState.isHost && myPlayer?.cards && (
+        <button
+          onClick={() => setShowMyCards(true)}
+          className="fixed top-3 left-3 z-[55] px-4 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-bunker-yellow/40 text-bunker-yellow font-display text-sm tracking-wider flex items-center gap-2 shadow-xl active:scale-95 transition-transform"
+          style={{ minHeight: '48px', boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 10px rgba(255,215,0,0.1)' }}
+        >
+          <BackpackIcon size={18} color="#FFD700" />
+          МОИ КАРТЫ
+        </button>
+      )}
+
+      {/* ═══ ИИ КОММЕНТАРИИ — поверх ВСЕГО ═══ */}
+      <AICommentary />
+
+      {/* ═══ МОДАЛКА "МОИ КАРТЫ" ═══ */}
+      <AnimatePresence>
+        {showMyCards && myPlayer?.cards && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex flex-col"
+            onClick={() => setShowMyCards(false)}
+          >
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className="flex-1 flex flex-col p-4 max-w-md mx-auto w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Заголовок */}
+              <div className="text-center mb-4 pt-4">
+                <p className="text-bunker-yellow font-display text-xl tracking-wider">МОИ КАРТЫ</p>
+                <p className="text-bunker-muted font-mono text-[10px] mt-1">{myPlayer.name}</p>
+              </div>
+
+              {/* Список карт */}
+              <div className="flex-1 overflow-y-auto space-y-2 pb-4">
+                {myPlayer.cards.map(card => {
+                  const Icon = CARD_ICONS[card.type] || BriefcaseIcon;
+                  const color = CARD_COLORS[card.type];
+                  return (
+                    <motion.div
+                      key={card.type}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      className={`rounded-xl p-4 border ${
+                        card.revealed
+                          ? 'border-white/20 bg-white/5'
+                          : 'border-white/5 bg-bunker-card/50'
+                      }`}
+                      style={{ borderLeftWidth: 3, borderLeftColor: color }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: color + '15' }}
+                        >
+                          <Icon size={20} color={color} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="font-mono text-[9px] tracking-[0.2em]" style={{ color: color + 'CC' }}>
+                              {CARD_LABELS[card.type]}
+                            </p>
+                            {card.revealed ? (
+                              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-bunker-green/20 text-bunker-green">ОТКРЫТА</span>
+                            ) : (
+                              <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-bunker-muted">СКРЫТА</span>
+                            )}
+                          </div>
+                          <p className="text-white font-body text-sm leading-snug">{card.value}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Кнопка закрыть */}
+              <button
+                onClick={() => setShowMyCards(false)}
+                className="w-full py-3 bg-bunker-card border border-white/10 rounded-xl text-bunker-muted font-mono text-sm"
+              >
+                Закрыть
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
